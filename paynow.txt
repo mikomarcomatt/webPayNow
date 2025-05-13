@@ -1,0 +1,84 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+using QRCoder;
+using PayNowQRCode;
+using PayNowQRCode.Model;
+using System.Drawing.Imaging;
+using System.Drawing;
+using System.IO;
+
+public partial class _Default : Page
+{
+    protected void Page_Load(object sender, EventArgs e)
+    {
+
+        string paramInvNo = Request.QueryString["invno"];
+        string paramAmt = Request.QueryString["amt"];
+
+        double amount;
+        if (paramInvNo != null && paramAmt != null)
+        {
+            if (double.TryParse(paramAmt, out amount))
+            {
+                // Successfully converted
+                Console.WriteLine($"Converted value: {amount}");
+
+            }
+            else
+            {
+                // Handle invalid input
+                Console.WriteLine("Invalid number format.");
+            }
+
+
+
+            this.TextBox1.Text = paramInvNo;
+
+
+            PayNowOptions options = new PayNowOptions()
+            {
+                UEN = "202432885D",                 //UEN of the company
+                CompanyName = "BISDAK LASH&BROWS PTE. LTD.",     //Name of the Company
+                Amount = amount,                       //Amount
+                IsEditable = true,                  //User can edit the amount, false otherwise
+                ExpiryDate = "20250530",            //Expiry date for the QR Code YYYYMMDD
+                PaymentReference = "" + paramInvNo + ""    //Extra payment reference, if any
+            };
+            string paynowQrCode = PayNowCodeGenerator.GeneratePayNowStr(options);
+
+            Color darkColor = ColorTranslator.FromHtml("#90137b");
+            Color lightColor = ColorTranslator.FromHtml("#ffffff");
+
+            //QR using QRCoder lib
+            QRCodeGenerator qrGenerator = new QRCodeGenerator();
+            QRCodeData qrCodeData = qrGenerator.CreateQrCode(paynowQrCode, QRCodeGenerator.ECCLevel.Q);
+            QRCode qrCode = new QRCode(qrCodeData);
+            //Add paynow logo as icon in the center of image
+            Bitmap original = qrCode.GetGraphic(24, darkColor, lightColor, (Bitmap)Bitmap.FromFile($@"{AppDomain.CurrentDomain.BaseDirectory}\paynow_logo.png"), 30, 0, true, Color.White);
+            //resize the generated bitmap
+            Bitmap resized = new Bitmap(original, new System.Drawing.Size(original.Width / 5, original.Height / 5));
+            //resized.Save("paynowQR1.png", ImageFormat.Png);
+
+            //string filePath = "C:\\example\\myfile.txt";
+
+            if (File.Exists("" + paramInvNo + ".png"))
+            {
+                Console.WriteLine("File exists.");
+                File.Delete("" + paramInvNo + ".png");
+                resized.Save("" + paramInvNo + ".png", ImageFormat.Png);
+
+            }
+            else
+            {
+                string sDir = $@"{AppDomain.CurrentDomain.BaseDirectory}";
+                Console.WriteLine("File does not exist.");
+                resized.Save(sDir + @"\" + paramInvNo +".png", ImageFormat.Png);
+
+            }
+        }
+    }
+}
